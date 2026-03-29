@@ -1,0 +1,165 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String    @id @default(cuid())
+  email            String?   @unique
+  password_hash    String?
+  username         String?
+  role             String    @default("PATIENT")
+  is_anonymous     Boolean   @default(false)
+  is_verified      Boolean   @default(false)
+  two_fa_enabled   Boolean   @default(false)
+  two_fa_secret    String?
+  avatar_url       String?
+  refresh_token    String?
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  therapist        Therapist?
+  sessions         Session[]  @relation("PatientSessions")
+  messages         Message[]
+  journal_entries  JournalEntry[]
+  mood_checkins    MoodCheckin[]
+  safety_plans     SafetyPlan[]
+  notifications    Notification[]
+
+  @@map("users")
+}
+
+model Therapist {
+  id               String       @id @default(cuid())
+  user_id          String       @unique
+  user             User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  full_name        String
+  bio              String?
+  specializations  String       @default("[]") // Stored as JSON string
+  languages        String       @default("[]") // Stored as JSON string
+  session_types    String       @default("[]") // Stored as JSON string
+  hourly_rate      Float        @default(0)
+  rating           Float        @default(0)
+  total_reviews    Int          @default(0)
+  availability_json String?     // Stored as JSON string
+  is_verified      Boolean      @default(false)
+  created_at       DateTime     @default(now())
+
+  sessions         Session[]
+
+  @@map("therapists")
+}
+
+model Session {
+  id                String        @id @default(cuid())
+  patient_id        String
+  patient           User          @relation("PatientSessions", fields: [patient_id], references: [id], onDelete: Cascade)
+  therapist_id      String
+  therapist         Therapist     @relation(fields: [therapist_id], references: [id], onDelete: Cascade)
+  scheduled_at      DateTime
+  duration_minutes  Int           @default(60)
+  type              String        // Stored as String (VIDEO, VOICE, CHAT)
+  status            String        @default("PENDING")
+  room_id           String        @unique @default(cuid())
+  notes_encrypted   String?
+  rating            Int?
+  review            String?
+  created_at        DateTime      @default(now())
+
+  messages          Message[]
+
+  @@map("sessions")
+}
+
+model Message {
+  id                String      @id @default(cuid())
+  session_id        String
+  session           Session     @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  sender_id         String
+  sender            User        @relation(fields: [sender_id], references: [id], onDelete: Cascade)
+  content_encrypted String
+  message_type      String      @default("TEXT")
+  sent_at           DateTime    @default(now())
+  is_read           Boolean     @default(false)
+
+  @@map("messages")
+}
+
+model JournalEntry {
+  id                String    @id @default(cuid())
+  user_id           String
+  user              User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  title             String
+  content_encrypted String
+  mood_tag          String?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  @@map("journal_entries")
+}
+
+model MoodCheckin {
+  id            String   @id @default(cuid())
+  user_id       String
+  user          User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  mood_score    Int
+  note          String?
+  checked_in_at DateTime @default(now())
+
+  @@map("mood_checkins")
+}
+
+model Resource {
+  id            String           @id @default(cuid())
+  title         String
+  description   String
+  category      String
+  type          String
+  url           String
+  thumbnail_url String?
+  created_at    DateTime         @default(now())
+
+  @@map("resources")
+}
+
+model CrisisContact {
+  id             String  @id @default(cuid())
+  name           String
+  phone          String
+  description    String
+  country        String
+  available_24_7 Boolean @default(true)
+
+  @@map("crisis_contacts")
+}
+
+model SafetyPlan {
+  id                         String   @id @default(cuid())
+  user_id                    String
+  user                       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  warning_signs              String?
+  coping_strategies          String?
+  support_contacts_json      String?  // Stored as JSON string
+  professional_contacts_json String?  // Stored as JSON string
+  created_at                 DateTime @default(now())
+  updated_at                 DateTime @updatedAt
+
+  @@map("safety_plans")
+}
+
+model Notification {
+  id         String   @id @default(cuid())
+  user_id    String
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  title      String
+  body       String
+  type       String
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  @@map("notifications")
+}

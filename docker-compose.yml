@@ -1,0 +1,74 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: serenova_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: serenova
+      POSTGRES_PASSWORD: serenova_secret
+      POSTGRES_DB: serenova_db
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U serenova -d serenova_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: serenova_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://serenova:serenova_secret@postgres:5432/serenova_db
+      JWT_SECRET: serenova_jwt_super_secret_key_2024
+      JWT_REFRESH_SECRET: serenova_refresh_super_secret_key_2024
+      ENCRYPTION_KEY: 32characterlongsecretkey12345678
+      CLIENT_ORIGIN: http://localhost:5173
+      PORT: 5000
+      NODE_ENV: development
+      CLOUDINARY_CLOUD_NAME: ''
+      CLOUDINARY_API_KEY: ''
+      CLOUDINARY_API_SECRET: ''
+      SMTP_HOST: ''
+      SMTP_PORT: '587'
+      SMTP_USER: ''
+      SMTP_PASS: ''
+    ports:
+      - '5000:5000'
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    command: >
+      sh -c "npx prisma migrate deploy &&
+             npx prisma db seed &&
+             node server.js"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: serenova_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: http://localhost:5000/api
+      VITE_SOCKET_URL: http://localhost:5000
+    ports:
+      - '5173:5173'
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:
