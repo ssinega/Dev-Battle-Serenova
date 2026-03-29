@@ -1,8 +1,6 @@
 #!/bin/bash
 set -e
 
-echo "� Generating Prisma client..."
-npx prisma generate
 
 echo "🔄 Syncing database schema..."
 npx prisma db push --skip-generate --accept-data-loss || true

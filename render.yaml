@@ -3,7 +3,7 @@ services:
     name: serenova-backend
     env: node
     rootDir: backend
-    buildCommand: npm install
+    buildCommand: npm install && npx prisma generate
     startCommand: bash start.sh
     envVars:
       - key: NODE_ENV
